@@ -198,32 +198,38 @@
             const canvas = await html2canvas(document.getElementById('capture-area'), { 
                 scale: 3, 
                 useCORS: true,
+                logging: false,
                 backgroundColor: null
             });
             
-            canvas.toBlob(async (blob) => {
-                generatedBlob = blob;
-                const url = URL.createObjectURL(blob);
-                
-                const link = document.createElement('a');
-                link.download = `عيد_مبارك_${name}.png`;
-                link.href = url;
-                link.click();
+            // تحويل الكانفاس إلى رابط نصي للصورة (Data URL)
+            const imageData = canvas.toDataURL("image/png");
+            
+            // إنشاء عنصر تحميل وهمي
+            const link = document.createElement('a');
+            link.download = `عيد_مبارك_${name}.png`;
+            link.href = imageData;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
 
-                document.getElementById('shareBtn').style.display = 'flex';
-                btn.innerHTML = "<span>✨</span> تم الحفظ بنجاح";
-                btn.style.background = "#4a5568";
-                
-                // 1. نرسل التحديث للسيرفر أولاً
-                await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors' });
-                
-                // 2. ننتظر ثانية بسيطة لضمان تحديث السيرفر ثم نجلب الرقم الحقيقي الجديد
-                setTimeout(fetchCounter, 1000);
+            // إظهار زر المشاركة وتحديث الحالة
+            document.getElementById('shareBtn').style.display = 'flex';
+            btn.innerHTML = "<span>✅</span> تم الحفظ";
+            btn.style.background = "#2d3748";
+            
+            // ملاحظة لمستخدمي الآيفون والمتصفحات الداخلية
+            setTimeout(() => {
+                alert("تم بدء التحميل! إذا لم تجد الصورة في الاستوديو، اضغط مطولاً على البطاقة واختر 'حفظ الصورة'.");
+            }, 500);
 
-            }, 'image/png', 1.0);
+            // تحديث العداد في السيرفر
+            fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors' });
+            setTimeout(fetchCounter, 1000);
 
         } catch (err) { 
-            alert("عذراً، حدث خطأ أثناء الحفظ."); 
+            console.error(err);
+            alert("عذراً، حدثت مشكلة أثناء الحفظ. جرب متصفحاً آخر."); 
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
@@ -250,6 +256,9 @@
         }
     }
 </script>
+
+</body>
+</html>
 
 </body>
 </html>
