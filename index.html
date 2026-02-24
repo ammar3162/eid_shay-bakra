@@ -16,8 +16,6 @@
 --bg:linear-gradient(135deg,#f1f5f9,#e2e8f0);
 }
 
-*{box-sizing:border-box}
-
 body{
 font-family:'Cairo',sans-serif;
 background:var(--bg);
@@ -102,11 +100,6 @@ text-align:center;
 margin-bottom:15px;
 }
 
-input:focus{
-border-color:var(--primary);
-outline:none;
-}
-
 .btn{
 width:100%;
 padding:18px;
@@ -125,21 +118,9 @@ transition:.2s;
 
 .btn:hover{transform:translateY(-2px)}
 
-.btn-download{
-background:var(--dark);
-color:#fff;
-}
-
 .btn-share{
 background:var(--whatsapp);
 color:#fff;
-display:none;
-}
-
-.progress-box{
-margin-top:20px;
-font-size:14px;
-color:#64748b;
 }
 
 .footer-text{
@@ -166,7 +147,7 @@ z-index:9999;
 
 <body>
 
-<div id="loading">⏳ جاري تجهيز بطاقتك...</div>
+<div id="loading">⏳ جاري تجهيز البطاقة...</div>
 
 <div class="main-wrapper">
 
@@ -181,17 +162,9 @@ z-index:9999;
 
 <input type="text" id="nameInput" placeholder="اكتب اسمك الكريم..." maxlength="25">
 
-<button class="btn btn-download" onclick="handleDownload()">
-🎨 صمم بطاقتك الآن
-</button>
-
 <button class="btn btn-share" id="shareBtn" onclick="handleShare()">
-📲 شارك عبر واتساب
+📲 شارك البطاقة عبر واتساب
 </button>
-
-<div class="progress-box">
-كل مشاركة تزيد فرصتك في الحصول على عيدية 🎁
-</div>
 
 <div class="footer-text">
 كل عام وأنتم بخير © 2026
@@ -200,7 +173,6 @@ z-index:9999;
 </div>
 
 <script>
-
 /* ===== عداد محفوظ في المتصفح ===== */
 let joyCount = localStorage.getItem("joyCount");
 if(!joyCount){
@@ -231,12 +203,11 @@ document.getElementById("display-name").innerText=
 e.target.value || "اسمك هنا";
 });
 
-/* ===== تحميل البطاقة ===== */
+/* ===== مشاركة البطاقة كصورة مباشرة ===== */
 let generatedBlob=null;
 
-async function handleDownload(){
-
-const name=document.getElementById("nameInput").value.trim();
+async function handleShare(){
+const name = document.getElementById("nameInput").value.trim();
 if(!name){
 alert("اكتب اسمك أولاً ❤️");
 return;
@@ -244,46 +215,18 @@ return;
 
 document.getElementById("loading").style.display="flex";
 
-const canvas=await html2canvas(
+/* إنشاء الصورة */
+const canvas = await html2canvas(
 document.getElementById("capture-area"),
 {scale:3,useCORS:true}
 );
 
-canvas.toBlob(blob=>{
-generatedBlob=blob;
+canvas.toBlob(async blob=>{
+generatedBlob = blob;
+const file = new File([generatedBlob], `عيد_مبارك_${name}.png`, {type:"image/png"});
 
-const link=document.createElement("a");
-link.download=`عيد_مبارك_${name}.png`;
-link.href=URL.createObjectURL(blob);
-link.click();
-
-document.getElementById("shareBtn").style.display="flex";
-document.getElementById("loading").style.display="none";
-
-},'image/png',1);
-}
-
-/* ===== مشاركة احترافية ===== */
-
-async function handleShare(){
-
-if(!generatedBlob){
-alert("صمم البطاقة أولاً ❤️");
-return;
-}
-
-const name=document.getElementById("nameInput").value || "صديقك";
-
-/* تحويل الـ Blob إلى ملف */
-const file = new File(
-[generatedBlob],
-`عيد_مبارك_${name}.png`,
-{ type: "image/png" }
-);
-
-/* لو الجهاز يدعم مشاركة الملفات */
-if (navigator.canShare && navigator.canShare({ files: [file] })) {
-
+/* مشاركة مباشرة لو يدعم الجهاز */
+if(navigator.canShare && navigator.canShare({ files:[file] })){
 try{
 await navigator.share({
 title: "عيد مبارك 🎉",
@@ -293,28 +236,15 @@ files: [file]
 }catch(err){
 console.log("تم إلغاء المشاركة");
 }
-
 } else {
-
-/* fallback لو ما يدعم مشاركة الصور */
-const text =
-`🎉 عيدك مبارك ✨
-
-صممت لك بطاقة خاصة ❤️
-حملها وشاركها الآن 🎁`;
-
-window.open(
-`https://wa.me/?text=${encodeURIComponent(text)}`,
-'_blank'
-);
-
+/* fallback نصي لو الجهاز لا يدعم مشاركة الملفات */
+alert("مشاركة الصور غير مدعومة على هذا الجهاز، استخدم الهاتف الجوال.");
 }
 
+document.getElementById("loading").style.display="none";
+},'image/png',1);
 }
-
-</script>
 </script>
 
 </body>
 </html>
-
