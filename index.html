@@ -107,10 +107,20 @@
 
         .btn-download { background: var(--dark); color: white; }
         .btn-download:hover { background: #1a202c; transform: translateY(-2px); }
-        .btn-download:active { transform: translateY(0); }
 
         .btn-share { background: var(--whatsapp); color: white; display: none; }
         .btn-share:hover { background: #22c35e; transform: translateY(-2px); }
+
+        /* نافذة معاينة الصورة للحفظ اليدوي */
+        #previewOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); display: none; align-items: center;
+            justify-content: center; z-index: 3000; flex-direction: column; padding: 20px;
+            backdrop-filter: blur(5px);
+        }
+        #previewImage { width: 100%; max-width: 400px; border-radius: 15px; border: 3px solid white; }
+        .close-preview { color: white; margin-top: 25px; cursor: pointer; padding: 10px 30px; background: #e53e3e; border-radius: 50px; font-weight: bold; }
+        .instruction { color: #ffd700; margin-bottom: 15px; font-size: 16px; text-align: center; font-weight: bold; animation: pulse 1.5s infinite; }
 
         .footer-text { font-size: 12px; color: #94a3b8; margin-top: 20px; font-weight: 600; }
     </style>
@@ -153,6 +163,12 @@
     <div class="footer-text"> شاي بكره © 2026</div>
 </div>
 
+<div id="previewOverlay">
+    <div class="instruction">💡 اضغط مطولاً على الصورة ثم اختر "حفظ في الصور"</div>
+    <img id="previewImage" src="" alt="تهنئة العيد">
+    <div class="close-preview" onclick="document.getElementById('previewOverlay').style.display='none'">تم الحفظ ✅</div>
+</div>
+
 <script>
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxnW-kXF76t-bWQrI-SiKHjxeKYK1HIzIa1xMXgVzgMspNQx3FgPJ99RHaXdV9FIi1NNQ/exec';
     let generatedBlob = null;
@@ -161,17 +177,11 @@
 
    async function fetchCounter() {
         try {
-            // إضافة t لمنع المتصفح من كاش (Cache) النتيجة القديمة
             const response = await fetch(SCRIPT_URL + '?t=' + new Date().getTime());
             const count = await response.text();
-            
-            // تحويل النص إلى رقم نظيف والتأكد أنه رقم صحيح
             const numericCount = parseInt(count.replace(/[^0-9]/g, '')) || 0;
-            
-            // عرض الرقم الحقيقي بالصيغة العربية
             document.getElementById('joy-count').innerText = numericCount.toLocaleString('ar-SA');
         } catch (e) { 
-            // في حال الفشل، نعرض الرقم الافتراضي
             document.getElementById('joy-count').innerText = "١,٢٩١"; 
         }
     }
@@ -198,38 +208,39 @@
             const canvas = await html2canvas(document.getElementById('capture-area'), { 
                 scale: 3, 
                 useCORS: true,
-                logging: false,
-                backgroundColor: null
+                backgroundColor: null,
+                logging: false
             });
             
-            // تحويل الكانفاس إلى رابط نصي للصورة (Data URL)
+            // تحويل الكانفاس لصورة
             const imageData = canvas.toDataURL("image/png");
             
-            // إنشاء عنصر تحميل وهمي
+            // 1. محاولة التحميل التلقائي (للكومبيوتر والأندرويد)
             const link = document.createElement('a');
             link.download = `عيد_مبارك_${name}.png`;
             link.href = imageData;
-            document.body.appendChild(link);
             link.click();
-            document.body.removeChild(link);
 
-            // إظهار زر المشاركة وتحديث الحالة
+            // 2. حل مشكلة الاستوديو (عرض الصورة للحفظ اليدوي)
+            const previewOverlay = document.getElementById('previewOverlay');
+            const previewImage = document.getElementById('previewImage');
+            previewImage.src = imageData;
+            previewOverlay.style.display = 'flex';
+
+            // 3. تخزين الـ Blob للمشاركة لاحقاً
+            canvas.toBlob((blob) => { generatedBlob = blob; }, 'image/png');
+
+            // تحديث الواجهة
             document.getElementById('shareBtn').style.display = 'flex';
-            btn.innerHTML = "<span>✅</span> تم الحفظ";
-            btn.style.background = "#2d3748";
+            btn.innerHTML = "<span>✨</span> تم التجهيز بنجاح";
+            btn.style.background = "#4a5568";
             
-            // ملاحظة لمستخدمي الآيفون والمتصفحات الداخلية
-            setTimeout(() => {
-                alert("تم بدء التحميل! إذا لم تجد الصورة في الاستوديو، اضغط مطولاً على البطاقة واختر 'حفظ الصورة'.");
-            }, 500);
-
-            // تحديث العداد في السيرفر
-            fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors' });
+            // تحديث السيرفر
+            await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors' });
             setTimeout(fetchCounter, 1000);
 
         } catch (err) { 
-            console.error(err);
-            alert("عذراً، حدثت مشكلة أثناء الحفظ. جرب متصفحاً آخر."); 
+            alert("عذراً، حدث خطأ أثناء الحفظ."); 
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
@@ -237,28 +248,19 @@
 
     async function handleShare() {
         if (!generatedBlob) return;
-
         const name = document.getElementById('nameInput').value || "صديقك";
-        const locationURL = "https://google.com"; // ضع رابط موقعك الفعلي هنا
-        const shareText = `عيدك مبارك يا غالي.. أرسلت لك تهنئة خاصة باسمي ✨\n\n🎁 عديتك تنتظرك هنا:\n${locationURL}\n\nاصنع تهنئتك الخاصة الآن: ${window.location.href}`;
+        const shareText = `عيدك مبارك يا غالي.. أرسلت لك تهنئة خاصة باسمي ✨\n\nاصنع تهنئتك الخاصة الآن: ${window.location.href}`;
 
         if (navigator.share && navigator.canShare({ files: [new File([generatedBlob], 'x.png', {type: 'image/png'})] })) {
             try {
                 const file = new File([generatedBlob], `تهنئة_العيد.png`, { type: 'image/png' });
-                await navigator.share({
-                    files: [file],
-                    text: shareText
-                });
+                await navigator.share({ files: [file], text: shareText });
             } catch (err) { console.log("إلغاء المشاركة"); }
         } else {
-            const whatsappText = encodeURIComponent(shareText);
-            window.open(`https://wa.me/?text=${whatsappText}`, '_blank');
+            window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
         }
     }
 </script>
-
-</body>
-</html>
 
 </body>
 </html>
